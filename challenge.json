@@ -1,0 +1,9 @@
+{
+    "name":"terminal velocity",
+    "category":"misc",
+    "description":"Text doesn't have to be UTF8 to be fun\n`nc {{.Netloc}} {{.DescPort}}`",
+    "flag":"flag{WithYourCapabilitiesCombinedIAmCaptainTerminal}",
+    "points":300,
+    "files":[],
+    "unlocked_by": null
+}
