@@ -234,7 +234,7 @@ level1password = 'G1V3M3TH3N3XTL3V3L'
 level2password = 'NOTHESEARENOTFLAGS'
 level3password = 'BobTheBuilder'
 level4password = 'PINEY_FLATS_TN_USA'
-flag = 'CSAW{WithYourCapabilitiesCombinedIAmCaptainTerminal}'
+flag = 'flag{WithYourCapabilitiesCombinedIAmCaptainTerminal}'
 
 spinner='\\|/-'
 
