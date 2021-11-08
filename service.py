@@ -5,10 +5,11 @@ import time
 import random
 import errno
 import sys
+import base64
 
 random.seed(time.time())
 
-DEBUG = True
+DEBUG = False
 HARDER = True
 
 ESC='\033'
@@ -228,64 +229,35 @@ def CHAFF(input):
                 ])
     return output
 
-level0password = 'L0IsReallyEasyRight?'
-level1password = 'G1VEMETHENEXTLEVEL'
+level0password = 'Level 0 Is Really Easy'
+level1password = 'G1V3M3TH3N3XTL3V3L'
 level2password = 'NOTHESEARENOTFLAGS'
-
-def genl0pw(pw):
-    y = 8
-    x = 19
-    amap = []
-    for i in range(len(pw)):
-        amap.append([i, pw[i]])
-    random.shuffle(amap)
-    output = ''
-    for e in amap:
-        output += STAT(CHAFF(e[1]), x + e[0], y)
-    return output
-
-
-def level0():
-    return f'''Welcome to the Terminal Velocity Server
-
-Emoji? Back in my day we made do with only 7-bits for text and that was plenty.
-None of these smiling poop faces. But wait, I hear you say -- there's all sorts
-of new fancy attacks like text direction and homograph attacks so surely UTF is
-more fun? Maybe, but do you really know what the simple terminal is capable of?
-
-LEVEL 0 PASSWORD: Not the password.
-
-Hopefully you have the right tool and this is trivial.''' + \
-genl0pw(level0password + "                 ") + \
-STAT("Enter the password: ",0, 12)
-
-def level1():
-    return f'''{FG("black") + FG("hidden")}The password is: {level1password}
-{FG("normal") + FG("green") + FG("brightgreen")}LEVEL 1
-
-Ok, now we're going to spice things up a tiny bit. How about this?
-
-Enter the password: '''
-
-
-def level2():
-    return f'''
-{CHAFF(level2password)}{ERASELINE()}
-Ok, ok, you solved that one. It wasn't that hard though. Just copying and pasting can do it, right?
-Fine. This is at least bit harder.
-
-Enter the password: '''
+level3password = 'BobTheBuilder'
+level4password = 'PINEY_FLATS_TN_USA'
+flag = 'CSAW{WithYourCapabilitiesCombinedIAmCaptainTerminal}'
 
 spinner='\\|/-'
 
+'''
 names=[]
 with open("names.txt","r") as f:
     names = f.readlines()
+'''
+
+with open("text1.png", "rb") as f:
+    text1 = base64.b64encode(f.read())
+
+with open("text2.six", "rb") as f:
+    text2 = f.read()
+
+with open("text3.tek", "rb") as f:
+    text3 = f.read()
+
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def CHECKICON(self):
         self.send("Feature check! There's a lot of cut-rate terminal emulators out there.\n")
-        self.send("Let's see yours handles this particular feature.")
+        self.send("Let's see yours handles this particular feature.\n\n")
         self.send(ICONIFY())
         self.send("Press enter to continue.")
         #hide text:
@@ -297,9 +269,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         self.send(FG('normal'))
         self.send(FG('normal48'))
         self.send(ERASESCREEN())
+        if DEBUG:
+            print("Received de-iconify response: " + bytes(check, 'utf8').hex())
         return check[0:4] == "\033[2t"
 
-    def wait(self, count=30, delay=0.2):
+    def wait(self, count=40, delay=0.1):
         for x in range(count):
             self.send(spinner[x % len(spinner)])
             time.sleep(delay)
@@ -342,11 +316,17 @@ Press enter to continue.
         self.send(CSI + '18t')
         self.send(INVISIBLE())
         check = self.get()
+        if check.count(";") <= 1:
+            return (-1, -1)
         width=check.strip()[:-1].split(";")[-1]
         height=check.split(";")[1]
         self.send(FG('normal'))
+        self.send(BG('black'))
+        self.send(FG('green'))
+        self.send(FG('brightgreen'))
         self.send("Querying ")
-        self.wait()
+        if not DEBUG:
+            self.wait()
         self.send(ERASESCREEN())
         if DEBUG:
             print(f"\tWidth: {width}, height: {height}")
@@ -377,6 +357,30 @@ Press enter to continue.
             msg = bytes(msg, 'utf8')
         self.request.sendall(msg)
 
+    inlinekill = random.choice([
+        ''
+
+
+        ])
+
+    noisykill = random.choice([
+            f"A{CSI}99999999999bB{CSI}99999999999bC{CSI}99999999999b", #oom terminal.app sometimes
+            f"{CSI}100000000000T", #used to kill windows terminal
+            f"{CSI}100000000000000000A", #used to kill gnome-terminal and putty
+            f"{CSI}100000000000000000@", #used to kill gnome-terminal and putty
+            f"{CSI}100000000000000000M", #used to kill gnome-terminal and putty
+
+        ])
+
+    def kill(self):
+        if HARDER:
+            #self.send(f"{OSC}20;")
+            self.send(f"{CSI}=2h")    #
+            self.send(f"{CSI}4h")     #insert mode is weird
+            self.send(f"{CSI}5i")     #nuke iTerm2 (test xterm?)
+            self.send(f"{CSI}?1004h") #enable focus reporting / beep
+            self.send(f"{CSI}2h")     #turn off keyboard
+
     def get(self):
         return str(self.request.recv(256), 'utf8')
 
@@ -385,6 +389,123 @@ Press enter to continue.
         self.send(EXITALT())
         self.send(ERASESCREEN())
         self.send(msg)
+
+    def level0(self):
+        y = 8
+        x = 19
+        amap = []
+        for i in range(len(level0password)):
+            amap.append([i, level0password[i]])
+        random.shuffle(amap)
+        newpw = ''
+        for e in amap:
+            newpw += STAT(CHAFF(e[1]), x + e[0], y)
+
+        self.send(f'''Welcome to the Terminal Velocity Server
+
+Emoji? Back in my day we made do with only 7-bits for text and that was plenty.
+None of these smiling poop faces. But wait, I hear you say -- there's all sorts
+of new fancy attacks like text direction and homograph attacks so surely UTF is
+more fun? Maybe, but do you really know what the simple terminal is capable of?
+
+LEVEL 0 PASSWORD: Not the password.
+
+Hopefully you have the right tool and this is trivial.''')
+        self.send(newpw)
+        self.send(STAT("Enter the password: ", 1, 12))
+        level0answer = self.get().strip()
+        if level0answer != level0password:
+            self.wrong("\n\nThat is incorrect.\n")
+            return False
+        print(f'\t{self.peer} solved level 0.')
+        return True
+
+    def level1(self):
+        self.send(f'''{FG("black") + FG("hidden") + BG("black")}The password is: {level1password}
+{FG("normal") + FG("normal48") + BG("black") + FG("green") + FG("brightgreen")}LEVEL 1
+
+Ok, now we're going to spice things up a tiny bit. How about this?
+
+Enter the password: ''')
+        level1answer = self.get().strip()
+        if level1answer != level1password:
+            self.wrong("\n\nBZZZZZZZT!\n")
+            return False
+        print(f'\t{self.peer} solved level 1.')
+        self.sendandwait("You got it!\n\n")
+        return True
+
+
+    def level2(self):
+        self.send(f'''
+{CHAFF(level2password)}{ERASELINE()}
+Look, anybody can copy and paste, this might require a different solution
+depending on what you did last time.
+
+Enter the password: ''')
+        level2answer = self.get().strip()
+        if level2answer != level2password:
+            self.wrong("\n\nGood job, that's--oh wait, no, I'm sorry, I mis-read. That's wrong.\n")
+            return False
+        self.sendandwait("Good job. See, only a bit harder. The next one can be tough though.")
+        print(f'\t{self.peer} solved level 2.')
+        return True
+
+    def level3(self):
+        self.kill()
+        self.send(FG("normal") + BG("black") + FG("black"))
+        self.draw(f'''
+
+ ____        _   _____ _          ____        _ _     _
+| __ )  ___ | |_|_   _| |__   ___| __ ) _   _(_) | __| | ___ _ __
+|  _ \ / _ \| '_ \| | | '_ \ / _ \  _ \| | | | | |/ _` |/ _ \ '__|
+| |_) | (_) | |_) | | | | | |  __/ |_) | |_| | | | (_| |  __/ |
+|____/ \___/|_.__/|_| |_| |_|\___|____/ \__,_|_|_|\__,_|\___|_|
+
+''')
+        self.send(FG("normal") + BG("black") + FG("green") + FG("brightgreen"))
+        #Recover hidden drawing/color after breaking terminals? 
+        self.send("\n\nEnter the password: ")
+        level3answer = self.get().strip()
+        if level3answer != level3password:
+            self.wrong("\n\nOh no, and after making it so far... Incorrect.\n")
+            return False
+        print(f'\t{self.peer} solved level 3.')
+        self.sendandwait("That's right! You are getting good. One last one.")
+        return True
+
+
+    def level4(self):
+        self.sendandwait(f'''
+
+Fine. Sure, I mean, you solved that. Whatever. No big deal. 
+
+I'm not offended. I had to walk uphill both ways in the snow and enter ascii
+with a telegraph machine. You kids think UTF8 is fancy, you should see EBCDIC!
+
+It's fine. Really. You want some fancy new fangled hotness? PLUS some old
+stuff? Ok. You must combine these three images. There are three real terminal
+emulators that will each display one of these. Good luck.
+
+''')
+        
+        self.send("\nFILE1:\n")
+        self.send(f"{OSC}1337;File=inline=1;size=24998:")
+        self.send(text1)
+        self.send(BEL)
+        self.send("\nFILE2:\n")
+        self.send(text2)
+        self.send("\nFILE3:\n")
+        self.send(text3)
+
+        self.send("\n\nEnter the password: ")
+        level4answer = self.get().strip()
+        if level4answer != level4password:
+            self.wrong("Oh no! You were so close, this is the last stage."))
+            return False
+        print(f'\t{self.peer} solved level 4.')
+        self.sendandwait("Way to go!")
+        return True
 
     def handle(self):
         try:
@@ -398,18 +519,18 @@ Press enter to continue.
             self.send(INIT())
 
             self.send(ERASESCREEN())
-            self.send(level0())
-            level0answer = self.get().strip()
-            if level0answer != level0password:
-                self.wrong()
+
+            if not self.level0():
                 return
-            print(f'\t{self.peer} solved level 0.')
 
             (width, height) = self.CHECKWINDOW();
+            if (width, height) == (-1, -1):
+                self.wrong("Could not query your window size.\n\nPlease check your settings or try another terminal.\n\n")
+                return 
             self.send(ERASESCREEN())
             if int(width) > 0 and int(height) > 0:
                 if (width, height) == ("80", "24"):
-                    self.sendandwait("Correct! The original size for a terminal, it's just right.")
+                    self.sendandwait("Correct! The original size for a terminal. It's just right.")
                 else:
                     if (int(width) * int(height)) > 80*40:
                         self.wrong("Sorry, no, that's are too big. ಠ_ಠ")
@@ -419,33 +540,41 @@ Press enter to continue.
                         return
             else:
                 self.wrong(f'''What kind of cheap terminal are you even 
-                running over there? Can't even report size...''')
+running over there? It can't even report its size!''')
                 return
 
 
-            self.send(level1())
-            level1answer = self.get().strip()
-            if level1answer != level1password:
-                self.wrong()
+            self.send(ERASESCREEN())
+
+            if not self.level1():
                 return
-            print(f'\t{self.peer} solved level 1.')
+
+            self.send(ERASESCREEN())
 
             if not self.CHECKICON():
-                self.wrong()
+                self.wrong("Sorry, you might want to figure out what a more fully featured terminal would do here."))
                 return
             self.sendandwait("Congratulations! You've got a pretty fancy terminal there!")
 
             self.send(ERASESCREEN())
 
-            self.send(level2())
-            level2answer = self.get().strip()
-            if level2answer != level2password:
-                self.wrong()
+            if not self.level2():
                 return
 
+            self.send(ERASESCREEN())
 
+            if not self.level3():
+                return
 
+            self.send(ERASESCREEN())
+
+            if not self.level4():
+                return
             self.send(EXITALT())
+            self.send(ERASESCREEN())
+            self.send("You made it! Congratulations. Your flag is: ")
+            self.send(flag)
+
         except socket.timeout:
             self.send(ERASESCREEN())
             self.send(EXITALT())
