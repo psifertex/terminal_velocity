@@ -533,7 +533,7 @@ emulators that will each display one of these. Good luck.
                     self.sendandwait("Correct! The original size for a terminal. It's just right.")
                 else:
                     if (int(width) * int(height)) > 80*40:
-                        self.wrong("Sorry, no, that's are too big. ಠ_ಠ")
+                        self.wrong("Sorry, no, that is too big. ಠ_ಠ")
                         return
                     else:
                         self.wrong("No, that's too small. Who even uses a terminal that little?")
