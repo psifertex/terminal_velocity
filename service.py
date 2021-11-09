@@ -501,7 +501,7 @@ emulators that will each display one of these. Good luck.
         self.send("\n\nEnter the password: ")
         level4answer = self.get().strip()
         if level4answer != level4password:
-            self.wrong("Oh no! You were so close, this is the last stage."))
+            self.wrong("Oh no! You were so close, this is the last stage.")
             return False
         print(f'\t{self.peer} solved level 4.')
         self.sendandwait("Way to go!")
@@ -552,7 +552,7 @@ running over there? It can't even report its size!''')
             self.send(ERASESCREEN())
 
             if not self.CHECKICON():
-                self.wrong("Sorry, you might want to figure out what a more fully featured terminal would do here."))
+                self.wrong("Sorry, you might want to figure out what a more fully featured terminal would do here.")
                 return
             self.sendandwait("Congratulations! You've got a pretty fancy terminal there!")
 
