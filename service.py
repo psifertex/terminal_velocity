@@ -335,9 +335,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
  #"  #  #"  #  #"  #         #   "    #       m"  #"  #    m#"
  #""""  #""""  #   #          """m    #     m"    #""""    "
  "#mm"  "#mm"  #   #         "mmm"  mm#mm  #mmmm  "#mm"    #
-(What is the proper screen size?)
-Press enter to continue.''')
+(What is the proper screen size?)''')
         self.send(GOTO(24,30))
+        self.send('Press enter to continue.')
         self.send(FG('normal'))
         self.send(FG('black'))
         self.send(BG('black'))

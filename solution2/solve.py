@@ -1,5 +1,6 @@
 from pprint import pprint
 from pwn import *
+import sys
 
 
 def extract_esc(cmd):
@@ -52,7 +53,11 @@ def sendline(r, text):
 
 
 def main():
-	r = remote("localhost", 3535)
+	if len(sys.argv) > 1:
+		host = sys.argv[1]
+	else:
+		host = "localhost"
+	r = remote(host, 3535)
 
 	pprint(extract_esc(r.recvuntil(b"Enter the password: ")))
 

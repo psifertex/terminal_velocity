@@ -2,7 +2,11 @@ import re
 
 from pwn import *
 
-r = remote("localhost", 3535)
+if len(sys.argv) > 1:
+    host = sys.argv[1]
+else:
+    host = "localhost"
+r = remote(host , 3535)
 
 # Level 0
 r.sendlineafter("Enter the password:", "Level 0 Is Really Easy")
