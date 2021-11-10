@@ -12,7 +12,7 @@ random.seed(time.time())
 
 iTermRE = re.compile(r'=[0-9A-F]{2,200}')
 
-DEBUG = True
+DEBUG = False
 HARDER = True
 
 ESC='\033'
