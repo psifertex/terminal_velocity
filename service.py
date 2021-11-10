@@ -6,10 +6,13 @@ import random
 import errno
 import sys
 import base64
+import re
 
 random.seed(time.time())
 
-DEBUG = False
+iTermRE = re.compile(r'=[0-9A-F]{2,200}')
+
+DEBUG = True
 HARDER = True
 
 ESC='\033'
@@ -65,10 +68,17 @@ CURSORSTYLE = {'blinkingblock':     '0',
                'steadybar':         '6',
 }
 
+
+def CURSOROFF():
+    return CSI + '?25l'
+
+def CURSORON():
+    return CURSOR('blinkingbar')
+
+
 def BG(color):
     colors = {**BGCOLORS, **CHARATTRIB}
     return CSI + colors[color] + 'm'
-
 
 def FG(color):
     colors = {**FGCOLORS, **CHARATTRIB}
@@ -226,6 +236,8 @@ def CHAFF(input):
             #need more chaff, should be lots of good options here!
             CSI + '?' + str(random.randint(2222,9999)) + 'h',
             CSI + '?' + str(random.randint(2222,9999)) + 'l',
+            OSC + '9;😈' + ST, 
+            OSC + '1337;AddAnnotationHidden=😈' + ST, 
                 ])
     return output
 
@@ -237,12 +249,6 @@ level4password = 'PINEY_FLATS_TN_USA'
 flag = 'flag{WithYourCapabilitiesCombinedIAmCaptainTerminal}'
 
 spinner='\\|/-'
-
-'''
-names=[]
-with open("names.txt","r") as f:
-    names = f.readlines()
-'''
 
 with open("text1.png", "rb") as f:
     text1 = base64.b64encode(f.read())
@@ -257,21 +263,34 @@ with open("text3.tek", "rb") as f:
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def CHECKICON(self):
         self.send("Feature check! There's a lot of cut-rate terminal emulators out there.\n")
-        self.send("Let's see yours handles this particular feature.\n\n")
+        self.send("Let's see yours can really move.\n\n")
         self.send(ICONIFY())
-        self.send("Press enter to continue.")
+        self.send("Press enter to continue.\n")
         #hide text:
         self.send(FG('hidden'))
         self.send(FG('black'))
+        self.send(CURSOROFF())
+        self.send(ESC + "P+q695465726d3250726f66696c65" + ST)
+        self.send(ESC + "P+q6f6e6c797265706c79746f7468656e65787175657279" + ST)
         self.send(CSI + "11t")
         self.send(DEICONIFY())
         check = self.get()
+        self.send(CURSORON())
+        self.send(ERASELINE())
         self.send(FG('normal'))
         self.send(FG('normal48'))
         self.send(ERASESCREEN())
+
+        match = iTermRE.search(check)
+        if match:
+            try:
+                print(f"\t ({self.peer}) iTerm Profile: {bytes.fromhex(match.group()[1:]).decode('utf8')}")
+                self.iterm = True
+            except:
+                pass
         if DEBUG:
-            print("Received de-iconify response: " + bytes(check, 'utf8').hex())
-        return check[0:4] == "\033[2t"
+            print(f"\t ({self.peer}) Received de-iconify response: {bytes(check, 'utf8').hex()}")
+        return check.endswith("\033[2t\n")
 
     def wait(self, count=40, delay=0.1):
         for x in range(count):
@@ -283,8 +302,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def CHECKWINDOW(self):
         self.send(ERASESCREEN())
         self.send(
-'''
-m     m #               m             "                    m    #
+'''m     m #               m             "                    m    #
 #  #  # # mm    mmm   mm#mm         mmm     mmm          mm#mm  # mm    mmm
 " #"# # #"  #  "   #    #             #    #   "           #    #"  #  #"  #
  ## ##" #   #  m"""#    #             #     """m           #    #   #  #""""
@@ -313,8 +331,9 @@ Press enter to continue.
         self.send(FG('black'))
         self.send(BG('black'))
         self.send(FG('hidden'))
-        self.send(CSI + '18t')
         self.send(INVISIBLE())
+        self.send(ESC + 'P+q6e616d65' + ST)
+        self.send(CSI + '18t')
         check = self.get()
         if check.count(";") <= 1:
             return (-1, -1)
@@ -329,7 +348,7 @@ Press enter to continue.
             self.wait()
         self.send(ERASESCREEN())
         if DEBUG:
-            print(f"\tWidth: {width}, height: {height}")
+            print(f"\t ({self.peer}) Width: {width}, height: {height}")
         return (width, height)
 
     def draw(self, screen):
@@ -349,7 +368,7 @@ Press enter to continue.
         if isinstance(msg, str):
             msg = bytes(msg, 'utf8')
         self.request.sendall(msg)
-        self.send("\n\nPress enter to continue.")
+        self.send("\n\nPress enter to continue.\n")
         check = self.get()
 
     def send(self, msg):
@@ -403,28 +422,28 @@ more fun? Maybe, but do you really know what the simple terminal is capable of?
 
 LEVEL 0 PASSWORD: Not the password.
 
-Hopefully you have the right tool and this is trivial.''')
+With the right tool, this is trivial.''')
         self.send(newpw)
         self.send(STAT("Enter the password: ", 1, 12))
         level0answer = self.get().strip()
         if level0answer != level0password:
             self.wrong("\n\nThat is incorrect.\n")
             return False
-        print(f'\t{self.peer} solved level 0.')
+        print(f'\t ({self.peer}) solved level 0.')
         return True
 
     def level1(self):
         self.send(f'''{FG("black") + FG("hidden") + BG("black")}The password is: {level1password}
 {FG("normal") + FG("normal48") + BG("black") + FG("green") + FG("brightgreen")}LEVEL 1
 
-Ok, now we're going to spice things up a tiny bit. How about this?
+Good but that was a gimme. How about this?
 
 Enter the password: ''')
         level1answer = self.get().strip()
         if level1answer != level1password:
             self.wrong("\n\nBZZZZZZZT!\n")
             return False
-        print(f'\t{self.peer} solved level 1.')
+        print(f'\t ({self.peer}) solved level 1.')
         self.sendandwait("You got it!\n\n")
         return True
 
@@ -432,7 +451,7 @@ Enter the password: ''')
     def level2(self):
         self.send(f'''
 {CHAFF(level2password)}{ERASELINE()}
-Look, anybody can copy and paste, this might require a different solution
+Anybody can copy and paste, this might require a different solution
 depending on what you did last time.
 
 Enter the password: ''')
@@ -441,7 +460,7 @@ Enter the password: ''')
             self.wrong("\n\nGood job, that's--oh wait, no, I'm sorry, I mis-read. That's wrong.\n")
             return False
         self.sendandwait("Good job. See, only a bit harder. Careful, the next one starts to get mean.")
-        print(f'\t{self.peer} solved level 2.')
+        print(f'\t ({self.peer}) solved level 2.')
         return True
 
     def level3(self):
@@ -463,7 +482,7 @@ Enter the password: ''')
         if level3answer != level3password:
             self.wrong("\n\nOh no, and after making it so far... Incorrect.\n")
             return False
-        print(f'\t{self.peer} solved level 3.')
+        print(f'\t ({self.peer}) solved level 3.')
         self.sendandwait("That's right! You are getting good. One last one.")
         return True
 
@@ -496,12 +515,13 @@ emulators that will each display one of these. Good luck.
         if level4answer != level4password:
             self.wrong("Oh no! You were so close, this is the last stage.")
             return False
-        print(f'\t{self.peer} solved level 4.')
+        print(f'\t ({self.peer}) solved level 4.')
         self.sendandwait("Way to go!")
         return True
 
     def handle(self):
         try:
+            self.iterm = False
             self.peer = self.request.getpeername()[0]
             self.request.settimeout(30)
             if DEBUG:
@@ -565,7 +585,7 @@ running over there? It can't even report its size!''')
                 return
             self.send(EXITALT())
             self.send(ERASESCREEN())
-            self.send("You made it! Congratulations. Your flag is: ")
+            self.send("You made it! Congratulations. Your flag is: \n\n")
             self.send(flag)
 
         except socket.timeout:
