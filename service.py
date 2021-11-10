@@ -233,25 +233,6 @@ TERMS = [
     [['0;271;0c'], 'xTerm', '']
 ]
 
-def CHAFF(input, iterm=False):
-    if not HARDER:
-        return input
-    output = ''
-    for char in input:
-        output += char
-        choices = [
-            #need more chaff, should be lots of good options here!
-            CSI + '?' + str(random.randint(2222,9999)) + 'h',
-            CSI + '?' + str(random.randint(2222,9999)) + 'l',
-            ]
-        if iterm:
-            choices.append(OSC + '9;😈' + ST) 
-            choices.append(OSC + '1337;AddHiddenAnnotation=😈' + ST)
-            choices.append(OSC + '1337;RequestAttention=yes' + ST)
-            choices.append(OSC + '1337;RequestAttention=fireworks' + ST)
-        output += random.choice(choices)
-    return output
-
 level0password = 'Level 0 Is Really Easy'
 level1password = 'G1V3M3TH3N3XTL3V3L'
 level2password = 'HalfwayDone'
@@ -396,7 +377,7 @@ running over there? It can't even report its size!''')
             return False
         return True
 
-    def draw(self, screen):
+    def draw(self, screen, kill=False):
         out = ''
         amap = []
         screen = screen.split('\n')
@@ -406,7 +387,7 @@ running over there? It can't even report its size!''')
                 amap.append([row + 1, col + 1, screen[row][col]])
         random.shuffle(amap)
         for coord in amap:
-            out += STAT(CHAFF(coord[2], self.iterm), coord[1], coord[0])
+            out += STAT(self.chaff(coord[2], iterm=self.iterm, kill=kill), coord[1], coord[0])
         self.send(out)
 
     def sendandwait(self, msg):
@@ -421,22 +402,56 @@ running over there? It can't even report its size!''')
             msg = bytes(msg, 'utf8')
         self.request.sendall(msg)
 
+    def chaff(self, input, iterm=False, kill=False):
+        # Intentionally not using the class iterm since I want to intentionally trigger 
+        # that behavior after I grab both terminal fingerprint and obvious iterm specific stuff
+        if not HARDER:
+            return input
+        output = ''
+        for char in input:
+            output += char
+            choices = [
+                #need more chaff, should be lots of good options here!
+                CSI + '?' + str(random.randint(2222,9999)) + 'h',
+                CSI + '?' + str(random.randint(2222,9999)) + 'l',
+                ]
+            if iterm:
+                choices.append(OSC + '9;😈' + ST) 
+                choices.append(OSC + '1337;AddHiddenAnnotation=😈' + ST)
+                choices.append(OSC + '1337;RequestAttention=yes' + ST)
+                choices.append(OSC + '1337;RequestAttention=fireworks' + ST)
+            output += random.choice(choices)
+            if kill:
+                output += self.killsingle()
+        return output
+
     def kill(self):
+        choices = [
+            f"{CSI}=2h",    #
+            f"{CSI}4h",     #insert mode is weird
+            f"{CSI}?1004h", #enable focus reporting / beep
+            f"{CSI}2h",     #turn off keyboard
+            #f"A{CSI}99999999999bB{CSI}99999999999bC{CSI}99999999999b", #oom terminal.app sometimes
+            f"{CSI}100000000000T", #used to kill windows terminal
+            f"{CSI}100000000000000000A", #used to kill gnome-terminal and putty
+            f"{CSI}100000000000000000@", #used to kill gnome-terminal and putty
+            f"{CSI}100000000000000000M", #used to kill gnome-terminal and putty
+            CURSOROFF(),
+        ]
+        if self.iterm:
+            choices.append(f"{CSI}5i") #unsafe on alacritty, spit out tons of paper
+        for choice in choices:
+            self.send(choice)
+
+    def killsingle(self):
         if HARDER:
             choices = [
                 f"{CSI}=2h",    #
-                f"{CSI}4h",     #insert mode is weird
                 f"{CSI}?1004h", #enable focus reporting / beep
                 f"{CSI}2h",     #turn off keyboard
-                #f"A{CSI}99999999999bB{CSI}99999999999bC{CSI}99999999999b", #oom terminal.app sometimes
-                f"{CSI}100000000000T", #used to kill windows terminal
-                f"{CSI}100000000000000000A", #used to kill gnome-terminal and putty
-                f"{CSI}100000000000000000@", #used to kill gnome-terminal and putty
-                f"{CSI}100000000000000000M", #used to kill gnome-terminal and putty
             ]
             if self.iterm:
                 choices.append(f"{CSI}5i") #unsafe on other terminals, spit out tons of paper
-                
             return random.choice(choices)
         else:
             return ""
@@ -459,7 +474,7 @@ running over there? It can't even report its size!''')
         random.shuffle(amap)
         newpw = ''
         for e in amap:
-            newpw += STAT(CHAFF(e[1], self.iterm), x + e[0], y)
+            newpw += STAT(self.chaff(e[1]), x + e[0], y)
 
         self.send(f'''Welcome to the Terminal Velocity Server
 
@@ -482,7 +497,7 @@ With the right tool, this is trivial.''')
 
     def level1(self):
         self.send(ERASESCREEN())
-        self.send(f'''{FG("black") + FG("hidden") + BG("black")}The password is: {CHAFF(level1password)}
+        self.send(f'''{FG("black") + FG("hidden") + BG("black")}The password is: {self.chaff(level1password)}
 {FG("normal") + FG("normal48") + BG("black") + FG("green") + FG("brightgreen")}LEVEL 1
 
 Good! But that was pretty easy. This might be also.
@@ -499,7 +514,7 @@ Enter the password: ''')
 
     def level2(self):
         self.send(ERASESCREEN())
-        self.send(f'''{CHAFF(level2password, self.iterm)}{ERASELINE(self.iterm)}
+        self.send(f'''{self.chaff(level2password, self.iterm)}{ERASELINE(self.iterm)}
 LEVEL 2
 
 Let's make sure you solved LEVEL 1 the intended way.
@@ -509,12 +524,13 @@ Enter the password: ''')
         if level2answer != level2password:
             self.wrong("\n\nGood job, that's--oh wait, no, I'm sorry, I mis-read. That's wrong.\n")
             return False
-        self.sendandwait("Good job. See, only a bit harder. Careful, the next one starts to get mean.")
+        self.sendandwait("\nGood job. See, only a bit harder. Careful, the next level starts to get mean.")
         print(f'\t ({self.peer}) solved level 2.')
         return True
 
     def level3(self):
         self.send(ERASESCREEN())
+        self.send(self.kill())
         self.send("LEVEL 3\n")
         self.send(FG("normal") + BG("black") + FG("black"))
         self.draw(f'''
@@ -525,7 +541,10 @@ Enter the password: ''')
 | |_) | (_) | |_) | | | | | |  __/ |_) | |_| | | | (_| |  __/ |
 |____/ \\___/|_.__/|_| |_| |_|\\___|____/ \\__,_|_|_|\\__,_|\\___|_|
 
-''')
+
+The above special font is important to get right. This text is only important
+to make sure we get enough chaff sent to cause maximum carnage. 
+''', kill=True)
         self.send(GOTO(2, 15))
 
         #Not sure about this one, might delete these
