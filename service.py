@@ -63,7 +63,7 @@ CURSORSTYLE = {'blinkingblock':     '0',
                'steadyunderline':   '4',
                'blinkingbar':       '5',
                'steadybar':         '6',
-} 
+}
 
 def BG(color):
     colors = {**BGCOLORS, **CHARATTRIB}
@@ -146,8 +146,8 @@ def GOTO(x,y):
 
 def ERASECHAR():
     return random.choice([ '\010',
-        CSI+'1D'+CSI+'3~',
-        CSI+'D' + CSI+'3~',
+        CSI + '1D' + CSI + '3~',
+        CSI + 'D' + CSI + '3~',
     ])
 
 def ERASELINE():
@@ -161,11 +161,11 @@ def ERASELINE():
     ])
 
 def ERASESCREEN():
-    return INIT() + random.choice([ 
+    return INIT() + random.choice([
         # Clear screen
         CSI + '2J',
         CSI + '80T',
-        " " + CSI +'1920b',
+        " " + CSI + '1920b',
     ]) + random.choice([
         # Move to home position
         GOTO(1,1),
@@ -174,7 +174,7 @@ def ERASESCREEN():
 
 def STAT(s, x, y): #string at coords
     return random.choice([
-        GOTO(x,y) + s,
+        GOTO(x, y) + s,
         ])
 
 def SAVECURSOR():
@@ -306,7 +306,7 @@ m     m #               m             "                    m    #
  #""""  #""""  #   #          """m    #     m"    #""""    "
  "#mm"  "#mm"  #   #         "mmm"  mm#mm  #mmmm  "#mm"    #
 
-Press enter to continue. 
+Press enter to continue.
 ''')
         self.send(GOTO(24,30))
         self.send(FG('normal'))
@@ -343,8 +343,6 @@ Press enter to continue.
         random.shuffle(amap)
         for coord in amap:
             out += STAT(CHAFF(coord[2]), coord[1], coord[0])
-            if HARDER:
-                out += self.kill()
         self.send(out)
 
     def sendandwait(self, msg):
@@ -373,6 +371,8 @@ Press enter to continue.
                 f"{CSI}100000000000000000@", #used to kill gnome-terminal and putty
                 f"{CSI}100000000000000000M", #used to kill gnome-terminal and putty
             ])
+        else:
+            return ""
 
     def get(self):
         return str(self.request.recv(256), 'utf8')
@@ -457,7 +457,7 @@ Enter the password: ''')
 ''')
         self.send(GOTO(2, 15))
         self.send(FG("normal") + BG("black") + FG("green") + FG("brightgreen"))
-        #Recover hidden drawing/color after breaking terminals? 
+        #Recover hidden drawing/color after breaking terminals?
         self.send("\n\nEnter the password: ")
         level3answer = self.get().strip()
         if level3answer != level3password:
@@ -471,7 +471,7 @@ Enter the password: ''')
     def level4(self):
         self.sendandwait(f'''
 
-Fine. Sure, I mean, you solved that. Whatever. No big deal. 
+Fine. Sure, I mean, you solved that. Whatever. No big deal.
 
 I'm not offended. I had to walk uphill both ways in the snow and enter ascii
 with a telegraph machine. You kids think UTF8 is fancy, you should see EBCDIC!
@@ -481,7 +481,7 @@ stuff? Ok. You must combine these three images. There are three real terminal
 emulators that will each display one of these. Good luck.
 
 ''')
-        
+
         self.send("\nFILE1:\n")
         self.send(f"{OSC}1337;File=inline=1;size=24998:")
         self.send(text1)
