@@ -10,10 +10,12 @@ import re
 
 random.seed(time.time())
 
-iTermRE = re.compile(r'=[0-9A-F]{2,200}')
+itermre = re.compile(r'=[0-9A-F]{2,200}')
+fpre = re.compile('([^c]*)c([^t]*)t*')
 
 DEBUG = False
 HARDER = True
+EXTRAHARD = True
 
 ESC='\033'
 CSI = ESC + '['
@@ -160,15 +162,18 @@ def ERASECHAR():
         CSI + 'D' + CSI + '3~',
     ])
 
-def ERASELINE():
-    # This only works on iTerm2!
-    #    '\010' * 80 + '\177' * 80,
-    return random.choice([
+def ERASELINE(iterm = False):
+    choices = [
+        '\015' + ' '*79 + '\015',
         '\015' + CSI + '2K', # Move left, kill whole line
         CSI + '1K' + CSI + '0K' + '\015', # kill left right then move left
         #'\033J' + '\033K' + '\015',
         '\015' + CSI + 'K',
-    ])
+    ]
+    if iterm:
+        choices.append('\010' * 80 + '\177' * 80)
+
+    return random.choice(choices)
 
 def ERASESCREEN():
     return INIT() + random.choice([
@@ -214,9 +219,11 @@ def NOFOCUSALERT():
 def NOSCROLL(): #Disable scrolling
     pass
 
-
 def INIT():
     return FG("normal") + FG("green") + FG("brightgreen") + BG("black") + CURSOR("blinkingbar") + VISIBLE()
+
+def QUERY():
+    return CSI + '>0c'
 
 TERMS = [
     [['FP Matches'], 'Name', 'Kill Command'],
@@ -226,19 +233,23 @@ TERMS = [
     [['0;271;0c'], 'xTerm', '']
 ]
 
-def CHAFF(input):
-    if HARDER == False:
+def CHAFF(input, iterm=False):
+    if not HARDER:
         return input
     output = ''
     for char in input:
         output += char
-        output += random.choice([
+        choices = [
             #need more chaff, should be lots of good options here!
             CSI + '?' + str(random.randint(2222,9999)) + 'h',
             CSI + '?' + str(random.randint(2222,9999)) + 'l',
-            OSC + '9;😈' + ST, 
-            OSC + '1337;AddAnnotationHidden=😈' + ST, 
-                ])
+            ]
+        if iterm:
+            choices.append(OSC + '9;😈' + ST) 
+            choices.append(OSC + '1337;AddHiddenAnnotation=😈' + ST)
+            choices.append(OSC + '1337;RequestAttention=yes' + ST)
+            choices.append(OSC + '1337;RequestAttention=fireworks' + ST)
+        output += random.choice(choices)
     return output
 
 level0password = 'Level 0 Is Really Easy'
@@ -262,6 +273,7 @@ with open("text3.tek", "rb") as f:
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def CHECKICON(self):
+        self.send(ERASESCREEN())
         self.send("Feature check! There's a lot of cut-rate terminal emulators out there.\n")
         self.send("Let's see yours can really move.\n\n")
         self.send(ICONIFY())
@@ -281,7 +293,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         self.send(FG('normal48'))
         self.send(ERASESCREEN())
 
-        match = iTermRE.search(check)
+        match = itermre.search(check)
         if match:
             try:
                 print(f"\t ({self.peer}) iTerm Profile: {bytes.fromhex(match.group()[1:]).decode('utf8')}")
@@ -301,7 +313,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
     def CHECKWINDOW(self):
         self.send(ERASESCREEN())
-        self.send(
+        self.draw(
 '''m     m #               m             "                    m    #
 #  #  # # mm    mmm   mm#mm         mmm     mmm          mm#mm  # mm    mmm
 " #"# # #"  #  "   #    #             #    #   "           #    #"  #  #"  #
@@ -323,22 +335,17 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
  #"  #  #"  #  #"  #         #   "    #       m"  #"  #    m#"
  #""""  #""""  #   #          """m    #     m"    #""""    "
  "#mm"  "#mm"  #   #         "mmm"  mm#mm  #mmmm  "#mm"    #
-
-Press enter to continue.
-''')
+(What is the proper screen size?)
+Press enter to continue.''')
         self.send(GOTO(24,30))
         self.send(FG('normal'))
         self.send(FG('black'))
         self.send(BG('black'))
         self.send(FG('hidden'))
         self.send(INVISIBLE())
-        self.send(ESC + 'P+q6e616d65' + ST)
+        self.send(QUERY())
         self.send(CSI + '18t')
         check = self.get()
-        if check.count(";") <= 1:
-            return (-1, -1)
-        width=check.strip()[:-1].split(";")[-1]
-        height=check.split(";")[1]
         self.send(FG('normal'))
         self.send(BG('black'))
         self.send(FG('green'))
@@ -348,8 +355,46 @@ Press enter to continue.
             self.wait()
         self.send(ERASESCREEN())
         if DEBUG:
+            print(f"\t ({self.peer}) Received windows response: {bytes(check, 'utf8').hex()}")
+        if check.count(";") <= 1:
+            self.wrong("Could not query your window size.\n\nPlease check your settings or try another terminal.\n\n")
+            return False
+
+        try:
+            result = fpre.match(check)
+            if result and result.group(1):
+                if ';95' in result.group(1):
+                    self.iterm = True
+            if result and result.group(2):
+                width=int(result.group(2).split(';')[-1])
+                height=int(result.group(2).split(';')[1])
+            else:
+                self.wrong("Could not query your window size.\n\nPlease check your settings or try another terminal.\n\n")
+                return False
+        except:
+            self.wrong("Couldn't query your window size.\n\nPlease check your settings or try another terminal.\n\n")
+            return False
+
+
+        if DEBUG:
             print(f"\t ({self.peer}) Width: {width}, height: {height}")
-        return (width, height)
+
+        self.send(ERASESCREEN())
+        if width > 0 and height > 0:
+            if (width, height) == (80, 24):
+                self.sendandwait("Correct! The original size for a terminal. It's just right.")
+            else:
+                if width * height > 80*24:
+                    self.wrong("Sorry, no, that is too big. ಠ_ಠ")
+                    return
+                else:
+                    self.wrong("No, that's too small. Who even uses a terminal that little?")
+                    return
+        else:
+            self.wrong(f'''What kind of cheap terminal are you even 
+running over there? It can't even report its size!''')
+            return False
+        return True
 
     def draw(self, screen):
         out = ''
@@ -361,7 +406,7 @@ Press enter to continue.
                 amap.append([row + 1, col + 1, screen[row][col]])
         random.shuffle(amap)
         for coord in amap:
-            out += STAT(CHAFF(coord[2]), coord[1], coord[0])
+            out += STAT(CHAFF(coord[2], self.iterm), coord[1], coord[0])
         self.send(out)
 
     def sendandwait(self, msg):
@@ -378,10 +423,9 @@ Press enter to continue.
 
     def kill(self):
         if HARDER:
-            return random.choice([
+            choices = [
                 f"{CSI}=2h",    #
                 f"{CSI}4h",     #insert mode is weird
-                #f"{CSI}5i",     #nuke iTerm2 (test xterm?)
                 f"{CSI}?1004h", #enable focus reporting / beep
                 f"{CSI}2h",     #turn off keyboard
                 #f"A{CSI}99999999999bB{CSI}99999999999bC{CSI}99999999999b", #oom terminal.app sometimes
@@ -389,7 +433,11 @@ Press enter to continue.
                 f"{CSI}100000000000000000A", #used to kill gnome-terminal and putty
                 f"{CSI}100000000000000000@", #used to kill gnome-terminal and putty
                 f"{CSI}100000000000000000M", #used to kill gnome-terminal and putty
-            ])
+            ]
+            if self.iterm:
+                choices.append(f"{CSI}5i") #unsafe on other terminals, spit out tons of paper
+                
+            return random.choice(choices)
         else:
             return ""
 
@@ -411,7 +459,7 @@ Press enter to continue.
         random.shuffle(amap)
         newpw = ''
         for e in amap:
-            newpw += STAT(CHAFF(e[1]), x + e[0], y)
+            newpw += STAT(CHAFF(e[1], self.iterm), x + e[0], y)
 
         self.send(f'''Welcome to the Terminal Velocity Server
 
@@ -433,10 +481,11 @@ With the right tool, this is trivial.''')
         return True
 
     def level1(self):
-        self.send(f'''{FG("black") + FG("hidden") + BG("black")}The password is: {level1password}
+        self.send(ERASESCREEN())
+        self.send(f'''{FG("black") + FG("hidden") + BG("black")}The password is: {CHAFF(level1password)}
 {FG("normal") + FG("normal48") + BG("black") + FG("green") + FG("brightgreen")}LEVEL 1
 
-Good but that was a gimme. How about this?
+Good! But that was pretty easy. This might be also.
 
 Enter the password: ''')
         level1answer = self.get().strip()
@@ -449,10 +498,11 @@ Enter the password: ''')
 
 
     def level2(self):
-        self.send(f'''
-{CHAFF(level2password)}{ERASELINE()}
-Anybody can copy and paste, this might require a different solution
-depending on what you did last time.
+        self.send(ERASESCREEN())
+        self.send(f'''{CHAFF(level2password, self.iterm)}{ERASELINE(self.iterm)}
+LEVEL 2
+
+Let's make sure you solved LEVEL 1 the intended way.
 
 Enter the password: ''')
         level2answer = self.get().strip()
@@ -464,6 +514,8 @@ Enter the password: ''')
         return True
 
     def level3(self):
+        self.send(ERASESCREEN())
+        self.send("LEVEL 3\n")
         self.send(FG("normal") + BG("black") + FG("black"))
         self.draw(f'''
 
@@ -475,6 +527,15 @@ Enter the password: ''')
 
 ''')
         self.send(GOTO(2, 15))
+
+        #Not sure about this one, might delete these
+        if EXTRAHARD:
+            self.send("Don't blink or you'll miss it.")
+            self.send(ERASESCREEN())
+            self.send("LEVEL 3\n")
+            self.send(GOTO(2, 15))
+        #Not sure about this one, might delete these
+
         self.send(FG("normal") + BG("black") + FG("green") + FG("brightgreen"))
         #Recover hidden drawing/color after breaking terminals?
         self.send("\n\nEnter the password: ")
@@ -536,45 +597,19 @@ emulators that will each display one of these. Good luck.
             if not self.level0():
                 return
 
-            (width, height) = self.CHECKWINDOW();
-            if (width, height) == (-1, -1):
-                self.wrong("Could not query your window size.\n\nPlease check your settings or try another terminal.\n\n")
-                return 
-            self.send(ERASESCREEN())
-            if int(width) > 0 and int(height) > 0:
-                if (width, height) == ("80", "24"):
-                    self.sendandwait("Correct! The original size for a terminal. It's just right.")
-                else:
-                    if (int(width) * int(height)) > 80*24:
-                        self.wrong("Sorry, no, that is too big. ಠ_ಠ")
-                        return
-                    else:
-                        self.wrong("No, that's too small. Who even uses a terminal that little?")
-                        return
-            else:
-                self.wrong(f'''What kind of cheap terminal are you even 
-running over there? It can't even report its size!''')
+            if not self.CHECKWINDOW():
                 return
-
-
-            self.send(ERASESCREEN())
 
             if not self.level1():
                 return
-
-            self.send(ERASESCREEN())
 
             if not self.CHECKICON():
                 self.wrong("Sorry, you might want to figure out what a more fully featured (and permissive) terminal would do here.")
                 return
             self.sendandwait("Congratulations! You've got a pretty fancy terminal there!")
 
-            self.send(ERASESCREEN())
-
             if not self.level2():
                 return
-
-            self.send(ERASESCREEN())
 
             if not self.level3():
                 return
