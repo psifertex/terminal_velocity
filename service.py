@@ -439,7 +439,7 @@ running over there? It can't even report its size!''')
             CURSOROFF(),
         ]
         if self.iterm:
-            choices.append(f"{CSI}5i") #unsafe on alacritty, spit out tons of paper
+            choices.append(f"{CSI}5i") #unsafe on urxvt, spit out tons of paper
         for choice in choices:
             self.send(choice)
 
