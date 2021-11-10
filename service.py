@@ -161,7 +161,7 @@ def ERASELINE():
     ])
 
 def ERASESCREEN():
-    return INIT() + random.choice([  
+    return INIT() + random.choice([ 
         # Clear screen
         CSI + '2J',
         CSI + '80T',
@@ -545,7 +545,7 @@ running over there? It can't even report its size!''')
             self.send(ERASESCREEN())
 
             if not self.CHECKICON():
-                self.wrong("Sorry, you might want to figure out what a more fully featured terminal would do here.")
+                self.wrong("Sorry, you might want to figure out what a more fully featured (and permissive) terminal would do here.")
                 return
             self.sendandwait("Congratulations! You've got a pretty fancy terminal there!")
 
