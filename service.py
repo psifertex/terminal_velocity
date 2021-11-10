@@ -63,7 +63,7 @@ CURSORSTYLE = {'blinkingblock':     '0',
                'steadyunderline':   '4',
                'blinkingbar':       '5',
                'steadybar':         '6',
-}                         
+} 
 
 def BG(color):
     colors = {**BGCOLORS, **CHARATTRIB}
@@ -231,7 +231,7 @@ def CHAFF(input):
 
 level0password = 'Level 0 Is Really Easy'
 level1password = 'G1V3M3TH3N3XTL3V3L'
-level2password = 'NOTHESEARENOTFLAGS'
+level2password = 'HalfwayDone'
 level3password = 'BobTheBuilder'
 level4password = 'PINEY_FLATS_TN_USA'
 flag = 'flag{WithYourCapabilitiesCombinedIAmCaptainTerminal}'
@@ -282,7 +282,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
     def CHECKWINDOW(self):
         self.send(ERASESCREEN())
-        self.draw(
+        self.send(
 '''
 m     m #               m             "                    m    #
 #  #  # # mm    mmm   mm#mm         mmm     mmm          mm#mm  # mm    mmm
@@ -343,6 +343,8 @@ Press enter to continue.
         random.shuffle(amap)
         for coord in amap:
             out += STAT(CHAFF(coord[2]), coord[1], coord[0])
+            if HARDER:
+                out += self.kill()
         self.send(out)
 
     def sendandwait(self, msg):
@@ -357,29 +359,20 @@ Press enter to continue.
             msg = bytes(msg, 'utf8')
         self.request.sendall(msg)
 
-    inlinekill = random.choice([
-        ''
-
-
-        ])
-
-    noisykill = random.choice([
-            f"A{CSI}99999999999bB{CSI}99999999999bC{CSI}99999999999b", #oom terminal.app sometimes
-            f"{CSI}100000000000T", #used to kill windows terminal
-            f"{CSI}100000000000000000A", #used to kill gnome-terminal and putty
-            f"{CSI}100000000000000000@", #used to kill gnome-terminal and putty
-            f"{CSI}100000000000000000M", #used to kill gnome-terminal and putty
-
-        ])
-
     def kill(self):
         if HARDER:
-            #self.send(f"{OSC}20;")
-            self.send(f"{CSI}=2h")    #
-            self.send(f"{CSI}4h")     #insert mode is weird
-            self.send(f"{CSI}5i")     #nuke iTerm2 (test xterm?)
-            self.send(f"{CSI}?1004h") #enable focus reporting / beep
-            self.send(f"{CSI}2h")     #turn off keyboard
+            return random.choice([
+                f"{CSI}=2h",    #
+                f"{CSI}4h",     #insert mode is weird
+                #f"{CSI}5i",     #nuke iTerm2 (test xterm?)
+                f"{CSI}?1004h", #enable focus reporting / beep
+                f"{CSI}2h",     #turn off keyboard
+                #f"A{CSI}99999999999bB{CSI}99999999999bC{CSI}99999999999b", #oom terminal.app sometimes
+                f"{CSI}100000000000T", #used to kill windows terminal
+                f"{CSI}100000000000000000A", #used to kill gnome-terminal and putty
+                f"{CSI}100000000000000000@", #used to kill gnome-terminal and putty
+                f"{CSI}100000000000000000M", #used to kill gnome-terminal and putty
+            ])
 
     def get(self):
         return str(self.request.recv(256), 'utf8')
@@ -447,22 +440,22 @@ Enter the password: ''')
         if level2answer != level2password:
             self.wrong("\n\nGood job, that's--oh wait, no, I'm sorry, I mis-read. That's wrong.\n")
             return False
-        self.sendandwait("Good job. See, only a bit harder. The next one can be tough though.")
+        self.sendandwait("Good job. See, only a bit harder. Careful, the next one starts to get mean.")
         print(f'\t{self.peer} solved level 2.')
         return True
 
     def level3(self):
-        self.kill()
         self.send(FG("normal") + BG("black") + FG("black"))
         self.draw(f'''
 
  ____        _   _____ _          ____        _ _     _
 | __ )  ___ | |_|_   _| |__   ___| __ ) _   _(_) | __| | ___ _ __
-|  _ \ / _ \| '_ \| | | '_ \ / _ \  _ \| | | | | |/ _` |/ _ \ '__|
+|  _ \\ / _ \\| '_ \\| | | '_ \\ / _ \\  _ \\| | | | | |/ _` |/ _ \\ '__|
 | |_) | (_) | |_) | | | | | |  __/ |_) | |_| | | | (_| |  __/ |
-|____/ \___/|_.__/|_| |_| |_|\___|____/ \__,_|_|_|\__,_|\___|_|
+|____/ \\___/|_.__/|_| |_| |_|\\___|____/ \\__,_|_|_|\\__,_|\\___|_|
 
 ''')
+        self.send(GOTO(2, 15))
         self.send(FG("normal") + BG("black") + FG("green") + FG("brightgreen"))
         #Recover hidden drawing/color after breaking terminals? 
         self.send("\n\nEnter the password: ")
@@ -532,7 +525,7 @@ emulators that will each display one of these. Good luck.
                 if (width, height) == ("80", "24"):
                     self.sendandwait("Correct! The original size for a terminal. It's just right.")
                 else:
-                    if (int(width) * int(height)) > 80*40:
+                    if (int(width) * int(height)) > 80*24:
                         self.wrong("Sorry, no, that is too big. ಠ_ಠ")
                         return
                     else:
