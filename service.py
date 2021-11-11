@@ -530,7 +530,7 @@ Enter the password: ''')
 
     def level3(self):
         self.send(ERASESCREEN())
-        self.send(self.kill())
+        self.kill()
         self.send("LEVEL 3\n")
         self.send(FG("normal") + BG("black") + FG("black"))
         self.draw(f'''
