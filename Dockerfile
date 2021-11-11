@@ -1,10 +1,10 @@
 FROM ubuntu:21.04
 
+RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 RUN apt-get update
 RUN apt-get install -y \
   apt-utils \ 
-  build-essential \
-  socat
+  python3
 
 RUN useradd -ms /bin/sh terminal
 WORKDIR /home/terminal
