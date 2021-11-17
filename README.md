@@ -2,17 +2,20 @@
 
 Misc CTF Challenge for CSAW Finals 2021
 
-# Deploying
+This is a challenge I've had in mind for almost 15 years and never got around to building until now. It (ab)uses a number of terminal escape codes to trigger both legitimate and scary and potentially dangerous terminal features, many of which are enabled by default in modern terminals! While a number of more serious exploits were patched in terminals since this original idea (it used to be trivial to kill many terminals with such escapes as "move cursor left 2^32 times or other similar ridiculous instructions), but most of the remaining shenanigans are merely abusing "legitimate" features that maybe are undesirable when simply viewing a text file or connecting to a network socket.
+
+It's worth noting that because this service uses the usual netcat connection from clients, it will be line-buffered. This prevents some more egregious abuse of terminal escapes and requires some slight trickery to receive the return escape codes as hidden parts of existing responses during the various "press enter to continue" or similar prompts. Using something like telnet or ssh would fix this and allow for even more dangerous terminal manipulations.
+
+Part of the goal of this challenge is to encourage people to be a bit more careful even when taking actions they might otherwise consider benign. Text should be considered harmful. 
+
+# Deploying / Running
 
 ```
 $ docker build -t terminal .
 $ docker run -it -p 3535:3535 terminal
 ```
 
-## Errata
-
-Sadly, a bunch of my old terminal 0day died or I'd be killing a lot more terminals during stage 3. 😆
-
+Or just run `python3 service.py` and connect to your local machine on port 3535.
 
 ## Solutions
 
